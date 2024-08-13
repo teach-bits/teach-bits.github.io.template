@@ -1,0 +1,49 @@
+name: Blog2Masto
+on:
+  push:
+    paths:
+      - '_posts/*.md'
+jobs:
+  post:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Check out this repo
+      uses: actions/checkout@v3
+      with:
+        fetch-depth: 0
+        
+    - name: Identify Added Blog Post
+      id: identify_added_blog_post
+      run: |
+        sha=${{ github.sha }}
+        
+        post_file=$(git diff --name-only --diff-filter=A $sha)
+        if [ -n "$post_file" ]; then
+          new_post_file=$(echo "$post_file" | head -n 1)
+
+          title=$(awk '/^title:/ {$1=""; sub(/^[ \t]+/, ""); print}' "$new_post_file" | tr -d '"')
+          date=$(echo "$new_post_file" | grep -oP '\d{4}-\d{2}-\d{2}' | sed 's/-/\//g')
+          tags=$(awk '/^tags:/ {for (i=2; i<=NF; i++) print "#" $i}' "$new_post_file" | tr -d '[,]' | tr '\n' ' ')
+
+          base_url="${{ secrets.BLOG_URL }}"
+          url=$(echo "$title" | tr '[:upper:]' '[:lower:]' | tr -d '[:punct:]' | sed -E 's/[[:space:]]+/-/g' | sed -E 's/^-//;s/-$//')
+          post_url="$base_url/$date/$url"
+
+          echo "post_title=$title" >> $GITHUB_ENV
+          echo "post_url=$post_url" >> $GITHUB_ENV
+          echo "post_tags=$tags" >> $GITHUB_ENV
+        fi
+    - name: Send toot to Mastodon
+      id: mastodon
+      if: env.post_title != '' && env.post_url != ''
+      uses: cbrgm/mastodon-github-action@v2
+      with:
+        access-token: ${{ secrets.MASTODON_ACCESS_TOKEN }}
+        url: ${{ secrets.MASTODON_URL }}
+        message: |
+          "${{ env.post_title }}"
+          ${{ env.post_url }}
+
+          ${{ env.post_tags }} #FediLZ
+
+
