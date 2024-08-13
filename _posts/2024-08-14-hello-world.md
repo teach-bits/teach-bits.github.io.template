@@ -2,7 +2,7 @@
 layout: post
 title: Hello World!
 description: >
-  Erster Blogpost 🥳 Plus eine kurze Dokumentation der verwendeten Tools.
+  Erster Blogpost 🥳 Dazu eine kurze Dokumentation der verwendeten Tools.
 sitemap: false
 hide_last_modified: true
 ---
